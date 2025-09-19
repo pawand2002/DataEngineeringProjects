@@ -1,0 +1,6 @@
+selected resource name:		DF_Clean_Sales_Data
+selected resource type:		dataflow
+factory name:			adf-sales-analytics
+factory location:		eastus
+subscription id:		ce00f5bc-997b-4558-bd8a-7f280f203730
+time of download (UTC):		Tue, 01 Jul 2025 21:57:19 GMT

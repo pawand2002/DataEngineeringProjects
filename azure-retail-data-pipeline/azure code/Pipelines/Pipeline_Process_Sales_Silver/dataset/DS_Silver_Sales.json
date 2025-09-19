@@ -1,0 +1,76 @@
+{
+    "name": "DS_Silver_Sales",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "LS_ADLS",
+            "type": "LinkedServiceReference"
+        },
+        "annotations": [],
+        "type": "DelimitedText",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobFSLocation",
+                "folderPath": "sales",
+                "fileSystem": "clean"
+            },
+            "columnDelimiter": ",",
+            "escapeChar": "\\",
+            "firstRowAsHeader": true,
+            "quoteChar": "\""
+        },
+        "schema": [
+            {
+                "name": "Order ID",
+                "type": "String"
+            },
+            {
+                "name": " Order Date",
+                "type": "String"
+            },
+            {
+                "name": " Customer Name",
+                "type": "String"
+            },
+            {
+                "name": " Region",
+                "type": "String"
+            },
+            {
+                "name": " Category",
+                "type": "String"
+            },
+            {
+                "name": " Sub-Category",
+                "type": "String"
+            },
+            {
+                "name": " Product Name",
+                "type": "String"
+            },
+            {
+                "name": " Sales",
+                "type": "String"
+            },
+            {
+                "name": " Quantity",
+                "type": "String"
+            },
+            {
+                "name": " Discount",
+                "type": "String"
+            },
+            {
+                "name": " Profit",
+                "type": "String"
+            },
+            {
+                "name": " Sales_Year",
+                "type": "String"
+            },
+            {
+                "name": " Sales_Month",
+                "type": "String"
+            }
+        ]
+    }
+}

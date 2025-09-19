@@ -1,0 +1,109 @@
+{
+    "name": "DF_Gold_SalesSummary",
+    "properties": {
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "dataset": {
+                        "referenceName": "DS_Silver_Sales_SRC",
+                        "type": "DatasetReference"
+                    },
+                    "name": "SilverSales",
+                    "description": "DS_Silver_Sales"
+                }
+            ],
+            "sinks": [
+                {
+                    "dataset": {
+                        "referenceName": "DS_ADLS_Gold_Sales",
+                        "type": "DatasetReference"
+                    },
+                    "name": "GoldSalesSummary",
+                    "description": "Export data to DF_GoldSalesSummary",
+                    "rejectedDataLinkedService": {
+                        "referenceName": "LS_ADLS",
+                        "type": "LinkedServiceReference"
+                    }
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "select"
+                },
+                {
+                    "name": "derivedColumns"
+                },
+                {
+                    "name": "aggregate"
+                }
+            ],
+            "scriptLines": [
+                "source(output(",
+                "          {Order ID} as string,",
+                "          { Order Date} as date 'dd-MM-yyyy',",
+                "          { Customer Name} as string,",
+                "          { Region} as string,",
+                "          { Category} as string,",
+                "          { Sub-Category} as string,",
+                "          { Product Name} as string,",
+                "          { Sales} as double,",
+                "          { Quantity} as string,",
+                "          { Discount} as double,",
+                "          { Profit} as double,",
+                "          { Sales_Year} as integer,",
+                "          { Sales_Month} as integer",
+                "     ),",
+                "     allowSchemaDrift: false,",
+                "     validateSchema: true,",
+                "     ignoreNoFilesFound: false,",
+                "     partitionBy('hash', 1)) ~> SilverSales",
+                "SilverSales select(mapColumn(",
+                "          {Order ID},",
+                "          {Order Date} = { Order Date},",
+                "          {Customer Name} = { Customer Name},",
+                "          Region = { Region},",
+                "          Category = { Category},",
+                "          {Sub-Category} = { Sub-Category},",
+                "          {Product Name} = { Product Name},",
+                "          Sales = { Sales},",
+                "          Quantity = { Quantity},",
+                "          Discount = { Discount},",
+                "          Profit = { Profit},",
+                "          Sales_Year = { Sales_Year},",
+                "          Sales_Month = { Sales_Month}",
+                "     ),",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true) ~> select",
+                "select derive(ProfitMargin = round((Profit /Sales) * 100, 2),",
+                "          Month = toString({Order Date}, 'yyyy-MM')) ~> derivedColumns",
+                "derivedColumns aggregate(groupBy({ Region} = Region,",
+                "          Month,",
+                "          { Category} = Category),",
+                "     TotalSales = round(sum(Sales),2),",
+                "          TotalProfit = round(sum(Profit),2),",
+                "          OrderCount = count({Order ID}),",
+                "          AvgOrderValue = round(avg(Sales),2)) ~> aggregate",
+                "aggregate sink(allowSchemaDrift: true,",
+                "     validateSchema: false,",
+                "     format: 'parquet',",
+                "     partitionFileNames:[(concat('sales_summary_', toString(currentUTC(), 'yyyy-MM-dd'), '.parquet'))],",
+                "     umask: 0022,",
+                "     preCommands: [],",
+                "     postCommands: [],",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true,",
+                "     mapColumn(",
+                "          Region = { Region},",
+                "          Month,",
+                "          Category = { Category},",
+                "          TotalSales,",
+                "          TotalProfit,",
+                "          OrderCount,",
+                "          AvgOrderValue",
+                "     ),",
+                "     partitionBy('hash', 1)) ~> GoldSalesSummary"
+            ]
+        }
+    }
+}

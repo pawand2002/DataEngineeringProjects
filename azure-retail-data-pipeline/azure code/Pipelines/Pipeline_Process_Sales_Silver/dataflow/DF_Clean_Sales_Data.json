@@ -1,0 +1,130 @@
+{
+    "name": "DF_Clean_Sales_Data",
+    "properties": {
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "dataset": {
+                        "referenceName": "DS_Bronze_Sales",
+                        "type": "DatasetReference"
+                    },
+                    "name": "BronzeSalesSRC"
+                }
+            ],
+            "sinks": [
+                {
+                    "dataset": {
+                        "referenceName": "DS_Silver_Sales",
+                        "type": "DatasetReference"
+                    },
+                    "name": "SilverSalesTGT",
+                    "rejectedDataLinkedService": {
+                        "referenceName": "LS_ADLS",
+                        "type": "LinkedServiceReference"
+                    }
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "select"
+                },
+                {
+                    "name": "derivedColumns",
+                    "description": "Adding three Derived Columns Sales_Year\nSales_Month \nClean_Region"
+                },
+                {
+                    "name": "HandleNulls"
+                }
+            ],
+            "scriptLines": [
+                "source(output(",
+                "          {Row ID} as string,",
+                "          {Order ID} as string,",
+                "          {Order Date} as string,",
+                "          {Ship Date} as string,",
+                "          {Ship Mode} as string,",
+                "          {Customer ID} as string,",
+                "          {Customer Name} as string,",
+                "          Segment as string,",
+                "          Country as string,",
+                "          City as string,",
+                "          State as string,",
+                "          {Postal Code} as string,",
+                "          Region as string,",
+                "          {Product ID} as string,",
+                "          Category as string,",
+                "          {Sub-Category} as string,",
+                "          {Product Name} as string,",
+                "          Sales as string,",
+                "          Quantity as string,",
+                "          Discount as string,",
+                "          Profit as string",
+                "     ),",
+                "     allowSchemaDrift: false,",
+                "     validateSchema: true,",
+                "     ignoreNoFilesFound: false) ~> BronzeSalesSRC",
+                "BronzeSalesSRC select(mapColumn(",
+                "          {Order ID},",
+                "          {Order Date},",
+                "          {Customer Name},",
+                "          Region,",
+                "          Category,",
+                "          {Sub-Category},",
+                "          {Product Name},",
+                "          Sales,",
+                "          Quantity,",
+                "          Discount,",
+                "          Profit",
+                "     ),",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true) ~> select",
+                "select derive(Sales_Year = year(toDate({Order Date},\"dd-MM-YYYY\")),",
+                "          Sales_Month = month(toDate({Order Date}, 'dd-MM-yyyy')),",
+                "          Clean_Region = trim(lower(Region))) ~> derivedColumns",
+                "derivedColumns derive(Sales = iif(isNull(Sales), '0', Sales),",
+                "          Region = iif(isNull(Region), 'Unknown', Region),",
+                "          Profit = iif(isNull(Profit), '0', Profit)) ~> HandleNulls",
+                "HandleNulls sink(allowSchemaDrift: false,",
+                "     validateSchema: true,",
+                "     input(",
+                "          {Order ID} as string,",
+                "          { Order Date} as string,",
+                "          { Customer Name} as string,",
+                "          { Region} as string,",
+                "          { Category} as string,",
+                "          { Sub-Category} as string,",
+                "          { Product Name} as string,",
+                "          { Sales} as string,",
+                "          { Quantity} as string,",
+                "          { Discount} as string,",
+                "          { Profit} as string,",
+                "          { Sales_Year} as string,",
+                "          { Sales_Month} as string",
+                "     ),",
+                "     partitionFileNames:[(concat('sales_cleaned_', toString(currentUTC(), 'yyyy-MM-dd'), '.csv'))],",
+                "     umask: 0022,",
+                "     preCommands: [],",
+                "     postCommands: [],",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true,",
+                "     mapColumn(",
+                "          {Order ID},",
+                "          { Order Date} = {Order Date},",
+                "          { Customer Name} = {Customer Name},",
+                "          { Region} = Clean_Region,",
+                "          { Category} = Category,",
+                "          { Sub-Category} = {Sub-Category},",
+                "          { Product Name} = {Product Name},",
+                "          { Sales} = Sales,",
+                "          { Quantity} = Quantity,",
+                "          { Discount} = Discount,",
+                "          { Profit} = Profit,",
+                "          { Sales_Year} = Sales_Year,",
+                "          { Sales_Month} = Sales_Month",
+                "     ),",
+                "     partitionBy('hash', 1)) ~> SilverSalesTGT"
+            ]
+        }
+    }
+}

@@ -1,0 +1,81 @@
+{
+    "name": "df_silver_to_gold_sales",
+    "properties": {
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "dataset": {
+                        "referenceName": "ds_silver_sales_parquet",
+                        "type": "DatasetReference"
+                    },
+                    "name": "sourceSilverSales"
+                }
+            ],
+            "sinks": [
+                {
+                    "dataset": {
+                        "referenceName": "ds_gold_daily_sales_parquet",
+                        "type": "DatasetReference"
+                    },
+                    "name": "sinkGoldSales",
+                    "rejectedDataLinkedService": {
+                        "referenceName": "ls_adls_gen2_retail",
+                        "type": "LinkedServiceReference"
+                    }
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "groupAndAggregate"
+                },
+                {
+                    "name": "calculateUniqueCustomers"
+                },
+                {
+                    "name": "finalPrepareForSink"
+                }
+            ],
+            "scriptLines": [
+                "source(output(",
+                "          TransactionID as string,",
+                "          CustomerID as string,",
+                "          ProductID as string,",
+                "          Quantity as integer,",
+                "          Price as float,",
+                "          TransactionDate as date,",
+                "          Region as string,",
+                "          Total_Amount as decimal(10,2)",
+                "     ),",
+                "     allowSchemaDrift: false,",
+                "     validateSchema: true,",
+                "     ignoreNoFilesFound: false,",
+                "     format: 'parquet') ~> sourceSilverSales",
+                "sourceSilverSales aggregate(groupBy(TransactionDate,",
+                "          Region),",
+                "     TotalDailySales = sum(Total_Amount),",
+                "          CustomerIDsArray = collect(CustomerID),",
+                "          TotalTransactions = count(TransactionID)) ~> groupAndAggregate",
+                "groupAndAggregate derive(UniqueCustomers = size(distinct(CustomerIDsArray))) ~> calculateUniqueCustomers",
+                "calculateUniqueCustomers derive(SalesDate = toString(TransactionDate, 'yyyy-MM-dd')) ~> finalPrepareForSink",
+                "finalPrepareForSink sink(allowSchemaDrift: true,",
+                "     validateSchema: false,",
+                "     format: 'parquet',",
+                "     partitionFileNames:['sales_data_summary.parquet'],",
+                "     umask: 0022,",
+                "     preCommands: [],",
+                "     postCommands: [],",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true,",
+                "     mapColumn(",
+                "          SalesDate,",
+                "          Region,",
+                "          TotalDailySales,",
+                "          TotalTransactions,",
+                "          UniqueCustomers",
+                "     ),",
+                "     partitionBy('hash', 1)) ~> sinkGoldSales"
+            ]
+        }
+    }
+}

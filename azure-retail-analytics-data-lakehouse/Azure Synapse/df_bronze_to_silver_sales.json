@@ -1,0 +1,82 @@
+{
+    "name": "df_bronze_to_silver_sales",
+    "properties": {
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "dataset": {
+                        "referenceName": "ds_bronze_sales_csv",
+                        "type": "DatasetReference"
+                    },
+                    "name": "sourcesalesbronze"
+                }
+            ],
+            "sinks": [
+                {
+                    "dataset": {
+                        "referenceName": "ds_silver_sales_parquet",
+                        "type": "DatasetReference"
+                    },
+                    "name": "sinksalessilver"
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "derivetotalamount"
+                },
+                {
+                    "name": "selectandmapcolumns"
+                }
+            ],
+            "scriptLines": [
+                "source(output(",
+                "          TransactionID as string,",
+                "          CustomerID as string,",
+                "          ProductID as string,",
+                "          Quantity as integer,",
+                "          Price as float,",
+                "          TransactionDate as string,",
+                "          Region as string",
+                "     ),",
+                "     allowSchemaDrift: false,",
+                "     validateSchema: true,",
+                "     ignoreNoFilesFound: false) ~> sourcesalesbronze",
+                "sourcesalesbronze derive(Total_Amount = toDecimal(Quantity*Price, 10, 2),",
+                "          TransactionDateConverted = toDate(TransactionDate, 'yyyy-MM-dd')) ~> derivetotalamount",
+                "derivetotalamount select(mapColumn(",
+                "          TransactionID,",
+                "          CustomerID,",
+                "          ProductID,",
+                "          Quantity,",
+                "          Price,",
+                "          TransactionDate = TransactionDateConverted,",
+                "          Region,",
+                "          Total_Amount",
+                "     ),",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true) ~> selectandmapcolumns",
+                "selectandmapcolumns sink(allowSchemaDrift: true,",
+                "     validateSchema: false,",
+                "     input(",
+                "          TransactionID as string,",
+                "          CustomerID as string,",
+                "          ProductID as string,",
+                "          Quantity as integer,",
+                "          Price as float,",
+                "          TransactionDate as date,",
+                "          Region as string,",
+                "          Total_Amount as decimal(10,2)",
+                "     ),",
+                "     format: 'parquet',",
+                "     partitionFileNames:[('sales_data_cleaned.parquet')],",
+                "     umask: 0022,",
+                "     preCommands: [],",
+                "     postCommands: [],",
+                "     skipDuplicateMapInputs: true,",
+                "     skipDuplicateMapOutputs: true,",
+                "     partitionBy('hash', 1)) ~> sinksalessilver"
+            ]
+        }
+    }
+}
